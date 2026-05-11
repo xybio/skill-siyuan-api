@@ -17,7 +17,6 @@ skill-siyuan-api/
   skills/
     siyuan-api/
       SKILL.md
-      _meta.json
       references/
         safe-api.md
 ```
@@ -177,7 +176,7 @@ git push origin v1.4.4
 
 这个 skill 不绑定 OpenClaw 专有运行时。只要目标 agent 框架支持 `SKILL.md` 风格的 skill 目录，通常都可以复用其主要内容。
 
-不同框架可能在安装目录、元数据字段和触发规则上略有差异。如果某个框架不识别 `_meta.json` 或 `metadata` 字段，核心说明仍然在 `SKILL.md` 中。
+不同框架可能在安装目录、元数据字段和触发规则上略有差异。如果某个框架不识别 frontmatter 里的 `metadata` 字段，核心说明仍然在 `SKILL.md` 中。
 
 ## English
 
@@ -198,7 +197,6 @@ skill-siyuan-api/
   skills/
     siyuan-api/
       SKILL.md
-      _meta.json
       references/
         safe-api.md
 ```
@@ -358,4 +356,4 @@ git push origin v1.4.4
 
 This skill is not tied to an OpenClaw-specific runtime. Its core content should be reusable by agent frameworks that support `SKILL.md`-style skill folders.
 
-Different frameworks may vary in installation paths, metadata fields, and trigger rules. If a framework does not recognize `_meta.json` or the frontmatter `metadata` field, the core instructions remain available in `SKILL.md`.
+Different frameworks may vary in installation paths, metadata fields, and trigger rules. If a framework does not recognize the frontmatter `metadata` field, the core instructions remain available in `SKILL.md`.

@@ -2,4 +2,4 @@
 *.log
 .env
 .env.*
-
+_meta.json

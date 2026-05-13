@@ -40,6 +40,39 @@ It intentionally lists only the safer, in-scope API families for local note mana
 - `/api/block/getBlockAttrs`
 - `/api/block/setBlockAttrs`
 
+### Database / Attribute View
+
+Use these for SiYuan database tables and database row/cell updates.
+
+- `/api/av/getAttributeView`
+- `/api/av/renderAttributeView`
+- `/api/av/getAttributeViewKeys`
+- `/api/av/getAttributeViewKeysByAvID`
+- `/api/av/getAttributeViewKeysByID`
+- `/api/av/setAttributeViewBlockAttr`
+- `/api/av/batchSetAttributeViewBlockAttrs`
+
+Allowed use:
+
+- inspect a database schema and field IDs
+- find a row/item by primary block value
+- update clearly requested cells in an existing row
+- batch update a small set of cells in one database
+
+Avoid:
+
+- broad or unreviewed database rewrites
+- deleting database rows or keys unless the user explicitly asks
+- deprecated `rowID` request fields; use `itemID`
+
+Notes:
+
+- Databases are Attribute Views; the database ID is the Attribute View ID (`avID`).
+- Row updates require the row item's `itemID`, which is usually the `blockID` of the primary `block` value in `av.keyValues`.
+- `renderAttributeView` is display-oriented. Grouped tables may have empty top-level `view.rows`; inspect `view.groups[*].rows` or use `getAttributeView` for storage-oriented lookup.
+- Database cell text does not reliably support Markdown tables. Use newline-separated lines for multiple records or structured notes inside one field.
+- Common update value shapes are `{ "text": { "content": "..." } }`, `{ "url": { "content": "https://..." } }`, `{ "number": { "content": 1, "isNotEmpty": true } }`, `{ "checkbox": { "checked": true } }`, and `{ "mSelect": [{ "content": "bulk", "color": "1" }] }`.
+
 ### Asset
 
 - `/api/asset/upload`

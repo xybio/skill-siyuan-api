@@ -1,6 +1,6 @@
 ---
 name: siyuan-api
-description: Local SiYuan API integration for notebook, document, block, asset, and limited SQL read operations. Restricted to local HTTP endpoints and environment-based token auth.
+description: Local SiYuan API integration for notebook, document, block, asset, database/attribute view, and limited SQL operations. Restricted to local HTTP endpoints and environment-based token auth.
 homepage: https://github.com/siyuan-note/siyuan
 metadata: {"openclaw":{"primaryEnv":"SIYUAN_API_TOKEN","requires":{"env":["SIYUAN_API_TOKEN","SIYUAN_API_URL"]}}}
 ---
@@ -53,10 +53,41 @@ This skill is intended for the following operations:
 - list, create, rename, move, and remove notebooks/documents
 - create documents from Markdown
 - insert, append, update, move, and delete blocks
+- inspect and update database/attribute view rows and cells
 - upload assets used by notes
 - export Markdown content from documents
 - run limited read-oriented SQL queries for note discovery or metadata inspection
 - read or write workspace files only when the task is clearly about SiYuan-managed content or assets
+
+## Database / Attribute View Notes
+
+SiYuan databases are exposed as Attribute Views. Use `/api/av/*` endpoints for database rows and cells; ordinary block attributes and SQL are not enough for this workflow.
+
+Safe database workflow:
+
+1. Read the database schema and values with `/api/av/getAttributeView`.
+2. Find the target row by matching the primary `block` key value, usually the database's first/key column.
+3. Use the matched value's `blockID` as `itemID` when updating cells.
+4. Update one cell with `/api/av/setAttributeViewBlockAttr`, or multiple cells with `/api/av/batchSetAttributeViewBlockAttrs`.
+5. Re-read the Attribute View to verify the saved values.
+
+Important details:
+
+- Prefer `itemID`; `rowID` is deprecated in upstream SiYuan and should not be used in new examples.
+- `/api/av/renderAttributeView` returns display-oriented data. If a table is grouped, top-level `view.rows` can be empty while rows live under `view.groups[*].rows`.
+- `/api/av/getAttributeView` returns storage-oriented `av.keyValues`, which is often more reliable for locating a row by accession/title/id.
+- Database cell text does not reliably support Markdown tables. When a cell needs multiple records or structured notes, store them as newline-separated lines inside the field instead of Markdown table syntax.
+- Do not update formula/template/created/updated/rollup-derived fields directly unless the user explicitly asks and the field type supports manual edits.
+
+Common value payloads for cell updates:
+
+```javascript
+{ text: { content: 'plain text' } }
+{ url: { content: 'https://example.com' } }
+{ number: { content: 36, isNotEmpty: true } }
+{ checkbox: { checked: true } }
+{ mSelect: [{ content: 'bulk', color: '1' }] }
+```
 
 ## SQL Guardrails
 
@@ -170,10 +201,56 @@ fetch(`${SIYUAN_API_URL}/api/query/sql`, {
 });
 ```
 
+### Update Database Row Cells
+
+```javascript
+const SIYUAN_API_TOKEN = process.env.SIYUAN_API_TOKEN;
+const SIYUAN_API_URL = process.env.SIYUAN_API_URL || 'http://127.0.0.1:6806';
+
+async function siyuanPost(path, body) {
+  const response = await fetch(`${SIYUAN_API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'token ' + SIYUAN_API_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  const result = await response.json();
+  if (result.code !== 0) throw new Error(result.msg || `SiYuan API failed: ${path}`);
+  return result.data;
+}
+
+const avID = 'database-attribute-view-id';
+const accession = 'GSE174060';
+
+const { av } = await siyuanPost('/api/av/getAttributeView', { id: avID });
+const accessionKeyValues = av.keyValues.find((kv) => kv.key.name === 'accession');
+const rowValue = accessionKeyValues.values.find((value) => value.block?.content === accession);
+if (!rowValue) throw new Error(`No database row found for ${accession}`);
+
+await siyuanPost('/api/av/batchSetAttributeViewBlockAttrs', {
+  avID,
+  values: [
+    {
+      keyID: 'title-field-key-id',
+      itemID: rowValue.blockID,
+      value: { text: { content: 'Dataset title' } }
+    },
+    {
+      keyID: 'sample-count-field-key-id',
+      itemID: rowValue.blockID,
+      value: { number: { content: 36, isNotEmpty: true } }
+    }
+  ]
+});
+```
+
 ## Notes
 
 - Repeated `createDocWithMd` on the same path does not overwrite an existing document.
 - Custom block attributes must be prefixed with `custom-`.
 - All endpoints use `POST` and return `{ code, msg, data }`.
 - Header format is `Authorization: token <your-token>`.
+- Database row updates use Attribute View `itemID`, not the displayed row index.
 - If a task would require proxying, conversion tooling, or broad filesystem manipulation, do not use this skill as currently published.
